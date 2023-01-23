@@ -1,5 +1,5 @@
 import React, { PointerEventHandler, PureComponent } from "react";
-import ReactDom from "react-dom";
+import { createRoot, Root } from "react-dom/client"
 import debounce from "lodash.debounce";
 
 import {
@@ -119,7 +119,10 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
 
   resizeObserver: ResizeObserver | null = null;
   containerNode?: HTMLDivElement | null = null;
-  unsubscribe = () => {};
+
+  highlightLayers = new Map<Element, Root>();
+
+  unsubscribe = () => { };
 
   constructor(props: Props<T_HT>) {
     super(props);
@@ -195,6 +198,20 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
 
   componentWillUnmount() {
     this.unsubscribe();
+    this.highlightLayers.forEach((root, element) => {
+      root.unmount()
+    });
+    this.highlightLayers.clear()
+  }
+
+  findOrCreateRootForHighlightLayer(layer: Element): Root {
+    let root = this.highlightLayers.get(layer);
+
+    if (!root) {
+      root = createRoot(layer);
+      this.highlightLayers.set(layer, root);
+    }
+    return root;
   }
 
   findOrCreateHighlightLayer(page: number) {
@@ -318,11 +335,15 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
 
     const highlightsByPage = this.groupHighlightsByPage(highlights);
 
+
     for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
       const highlightLayer = this.findOrCreateHighlightLayer(pageNumber);
 
       if (highlightLayer) {
-        ReactDom.render(
+
+        const root = this.findOrCreateRootForHighlightLayer(highlightLayer)
+
+        root.render(
           <div>
             {(highlightsByPage[String(pageNumber)] || []).map(
               ({ position, id, ...highlight }, index) => {
@@ -362,8 +383,8 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
                 );
               }
             )}
-          </div>,
-          highlightLayer
+          </div>
+
         );
       }
     }
@@ -449,7 +470,7 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
         ...pageViewport.convertToPdfPoint(
           0,
           scaledToViewport(boundingRect, pageViewport, usePdfCoordinates).top -
-            scrollMargin
+          scrollMargin
         ),
         0,
       ],
