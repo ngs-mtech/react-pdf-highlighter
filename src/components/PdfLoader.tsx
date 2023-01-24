@@ -7,7 +7,8 @@ interface Props {
   /** See `GlobalWorkerOptionsType`. */
   workerSrc: string;
 
-  url: string;
+  url?: string | undefined;
+  data?: ArrayBuffer | undefined;
   beforeLoad: JSX.Element;
   errorMessage?: JSX.Element;
   children: (pdfDocument: PDFDocumentProxy) => JSX.Element;
@@ -44,8 +45,15 @@ export class PdfLoader extends Component<Props, State> {
     }
   }
 
-  componentDidUpdate({ url }: Props) {
+  componentDidUpdate({ url, data }: Props) {
+    let doLoad = false;
     if (this.props.url !== url) {
+      doLoad = true;
+    }
+    if (this.props.data !== data) {
+      doLoad = true;
+    }
+    if (doLoad) {
       this.load();
     }
   }
@@ -62,7 +70,7 @@ export class PdfLoader extends Component<Props, State> {
 
   load() {
     const { ownerDocument = document } = this.documentRef.current || {};
-    const { url, cMapUrl, cMapPacked, workerSrc } = this.props;
+    const { url, data, cMapUrl, cMapPacked, workerSrc } = this.props;
     const { pdfDocument: discardedDocument } = this.state;
     this.setState({ pdfDocument: null, error: null });
 
@@ -73,12 +81,18 @@ export class PdfLoader extends Component<Props, State> {
     Promise.resolve()
       .then(() => discardedDocument && discardedDocument.destroy())
       .then(() => {
-        if (!url) {
+        if (!url && !data) {
           return;
+        }
+        let args = { ... this.props }
+        if (!url) {
+          delete args.url;
+        } else if (!data) {
+          delete args.data;
         }
 
         return getDocument({
-          ...this.props,
+          ...args,
           ownerDocument,
           cMapUrl,
           cMapPacked,
@@ -98,8 +112,8 @@ export class PdfLoader extends Component<Props, State> {
         {error
           ? this.renderError()
           : !pdfDocument || !children
-          ? beforeLoad
-          : children(pdfDocument)}
+            ? beforeLoad
+            : children(pdfDocument)}
       </>
     );
   }

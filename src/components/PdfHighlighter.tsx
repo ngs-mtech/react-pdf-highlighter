@@ -198,9 +198,9 @@ export class PdfHighlighter<T_HT extends IHighlight> extends PureComponent<
 
   componentWillUnmount() {
     this.unsubscribe();
-    this.highlightLayers.forEach((root, element) => {
-      root.unmount()
-    });
+    //this.highlightLayers.forEach((root, element) => {
+    //  root.unmount()
+    //});
     this.highlightLayers.clear()
   }
 
